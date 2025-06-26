@@ -15,6 +15,7 @@ class Jugador:
         return f"{self.nombre} {self.apellidos} con Id: {self.id_jugador}"
 
     # Genera un id automático para cada jugador que no esté repetido.
+    # Posiblemente se cambie y utilizamos la librería uuid.
     def crear_id_jugador(self):
         self.id_jugador = random.randint(1, 1_000_000)
         while self.id_jugador in self.lista_id_jugadores:
@@ -30,10 +31,8 @@ class Boleto:
         self.fecha_sorteo = ""
         self.precio = precio
         self.lista_num = []  # Almacena 6 números del boleto.
-        # Este atributo lo usaremos para que no se puedan generar boleto con los 6 números repetidos.
-        # self.lista_boletos = []
 
-    def __str__(self):  # Representación del objeto.
+    def __str__(self):  # Representación del objeto boleto.
         return f"\33[32mBoleto generado con éxito:\33[0m \nCódigo: {self.codigo} \nFecha: {self.fecha_sorteo} \nPrecio: {self.precio}€ \nJugada: {self.lista_num}"
 
     def generar_boleto_manual(self):
@@ -47,7 +46,7 @@ class Boleto:
                     print("El número ya existe, escoge otro por favor.")
                     continue
                 self.lista_num.append(num)
-            except ValueError:  # Si el user escribe un carácter que no sea número.
+            except ValueError:  # Si el user escribe un carácter que no sea un número, evitamos que falle el programa y mostramos mensaje informativo.
                 print("Error!!! Solo se permiten números.")
             if len(self.lista_num) == 6:
                 break
@@ -67,14 +66,14 @@ class Boleto:
         fecha_formateada = fecha_actual.strftime("%d/%m/%Y %H:%M")
         return fecha_formateada
 
-    def comprobar_si_boleto_esta_repetido(self, objeto_boleto):
-        pass
-
 
 class GestorLoteria:
     def __init__(self):
         self.n_aleatorios = []
         self.premios = {}
+        self.boletos_emitidos = []  # Esta lista guarda OBJETOS Boleto
+        # Almacena un conjunto de tuplas (6 números ordenados por cada tupla). Esto realiza un checkeo más rápido que si fueran listas
+        self.jugadas_unicas_emitidas = set()
 
     def generar_numeros_aleatorios(self):
         # Genera 6 números aleatorios y distintos desde el 1 al 49. Considerar añadir constantes.
@@ -113,14 +112,25 @@ class GestorLoteria:
         self.premios[4] = tercer_premio
         self.premios[3] = cuarto_premio
 
+    def agregar_boleto(self, boleto_a_agregar):
+        jugada_tupla = tuple(sorted(boleto_a_agregar.lista_num))
 
-####################################### MENÚ PRINCIPAL###############################################
+        if jugada_tupla in self.jugadas_unicas_emitidas:
+            # Si la jugada (tupla ordenada) ya está en nuestro set de jugadas únicas.
+            print("\n\33[31mEL BOLETO YA EXISTE. ESCOGE OTRO!!\33[0m")
+            return  # Salimos de la función.
+
+        # Si no está repetido, lo añadimos al set de jugadas únicas.
+        self.jugadas_unicas_emitidas.add(jugada_tupla)
+
+        # Y luego añadimos el objeto Boleto completo a nuestra lista de boletos emitidos.
+        self.boletos_emitidos.append(boleto_a_agregar)
+        print(boleto_a_agregar)
+
+        ####################################### MENÚ PRINCIPAL###############################################
 if __name__ == "__main__":
     gestor = GestorLoteria()
     gestor.asignar_premios(2_000_000, 600_000, 3_500, 350)
-
-    # Almacenamos los boletos que va creando el usuario.
-    boletos_del_jugador = []
 
     # Solicitamos los datos al jugador, creamos una instancia del objeto jugador y un id único para dicho jugador.
     nombre = input("Dime tu nombre: ")
@@ -144,28 +154,27 @@ if __name__ == "__main__":
         if opcion == "1":
             boleto = Boleto(2)
             boleto.generar_boleto_manual()
-            # Guardamos el objeto completo de boleto.
-            boletos_del_jugador.append(boleto)
-            print(boleto)
+            gestor.agregar_boleto(boleto)
 
         elif opcion == "2":
             boleto = Boleto(2)
             boleto.generar_boleto_aleatorio(gestor)
-            boletos_del_jugador.append(boleto)
-            print(boleto)
+            gestor.agregar_boleto(boleto)
         elif opcion == "3":
             combinacion_ganadora = gestor.generar_numeros_aleatorios()
+            print(
+                f"La combinación ganadora es: \33[32m{combinacion_ganadora}\33[0m")
 
         elif opcion == "4":
             try:
-                for boleto in boletos_del_jugador:
+                for boleto in gestor.boletos_emitidos:
                     gestor.comprobar_boleto(combinacion_ganadora, boleto)
             except NameError:
                 print("Todavía no ha salido el sorteo de hoy")
 
         elif opcion == "5":
             print("\n\33[31mTus boletos actuales son:\33[0m ")
-            for boleto in boletos_del_jugador:
+            for boleto in gestor.boletos_emitidos:
                 print(
                     f"Código: {boleto.codigo} Fecha: {boleto.fecha_sorteo} Precio: {boleto.precio} Número: {boleto.lista_num}")
 
@@ -175,9 +184,3 @@ if __name__ == "__main__":
 
         else:
             print("Tienes que escribir un número válido")
-
-
-# --- Sistema de Lotería Básico con POO ---
-# Descripción:
-# Cear un sistema simple para simular una lotería. El sistema debe permitir a los jugadores
-# elegir sus números, realizar sorteos y verificar si sus boletos son ganadores.
